@@ -7,23 +7,46 @@
     <title>Metro Rush - Corrida Infinita</title>
     <link rel="manifest" href="/metro-rush-corrida-infinita/manifest.json">
     <link rel="stylesheet" href="/metro-rush-corrida-infinita/assets/css/style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 <div>
     <div class="game-container">
-        <canvas id="gameCanvas" width="800" height="500" style="width:100%; max-width:800px; height:auto; aspect-ratio:800/500"></canvas>
+        <div class="hud-top">
+            <div class="score-panel">
+                <i data-lucide="trophy"></i>
+                <span>SCORE</span> 
+                <span id="scoreValue">0</span>
+            </div>
+            <div class="speed-panel">
+                <i data-lucide="zap"></i>
+                <span id="speedValue">5.2</span>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        
         <div class="game-ui">
-            <div class="score-panel"><span>🏆 SCORE</span> <span id="scoreValue">0</span></div>
-            <button class="restart-btn" id="restartButton">🚀 CORRER</button>
+            <button class="restart-btn" id="restartButton">
+                <i data-lucide="rocket"></i> CORRER
+            </button>
         </div>
+        
         <div class="controls-info">
-            <span>⬅️ ESQUERDA</span>
-            <span>➡️ DIREITA</span>
-            <span>⬆️ PULAR</span>
+            <span><i data-lucide="arrow-left"></i> ESQUERDA</span>
+            <span><i data-lucide="arrow-right"></i> DIREITA</span>
+            <span><i data-lucide="arrow-up"></i> PULAR</span>
         </div>
-        <div id="gameStatus" class="status-msg">💨 Deslize ou use setas | Pegue moedas e evite trens!</div>
+        
+        <div id="gameStatus" class="status-msg">
+            <i data-lucide="hand"></i> Deslize ou use setas | Pegue moedas e evite trens!
+        </div>
     </div>
 </div>
 <script src="/metro-rush-corrida-infinita/assets/js/game.js"></script>
+<script>
+    lucide.createIcons();
+</script>
 </body>
 </html>
