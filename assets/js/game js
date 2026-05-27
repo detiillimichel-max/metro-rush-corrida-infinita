@@ -1,0 +1,503 @@
+(function(){
+    // ----- CANVAS ELEMENTOS -----
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreSpan = document.getElementById('scoreValue');
+    const restartBtn = document.getElementById('restartButton');
+    const statusDiv = document.getElementById('gameStatus');
+
+    // ----- CONFIGURAÇÕES DO MUNDO -----
+    let width = 800;
+    let height = 500;
+    let laneWidth = 90;
+    let lanes = 3; // 0,1,2
+    let playerLane = 1; // começa na pista do meio
+    
+    // Posições X das pistas (centralizado)
+    let lanePositions = [];
+    
+    // Jogador
+    let player = { x: 0, y: 0, width: 38, height: 48, isJumping: false, jumpYOffset: 0, jumpBaseY: 0 };
+    let normalY = 0;
+    
+    // Coletores
+    let coins = [];
+    let trains = []; // obstáculos trens
+    
+    // Pontuação e Estado
+    let score = 0;
+    let gameRunning = true;
+    let frame = 0;
+    let spawnCounter = 0;
+    let speed = 5.2; // velocidade de deslocamento dos objetos (aumenta com score)
+    let baseSpeed = 5.2;
+    
+    // Controles por teclado / toque
+    let leftPressed = false;
+    let rightPressed = false;
+    let jumpRequest = false;
+    let jumpCooldown = false;
+    
+    // Efeitos visuais
+    let particles = [];
+    
+    // --- Animações e assets desenhados manualmente, tudo canvas puro (estilo Subway Surfers simplificado)
+    
+    function initLanes(){
+        lanePositions = [];
+        let startX = (width - (laneWidth * lanes)) / 2;
+        for(let i=0; i<lanes; i++){
+            lanePositions.push(startX + i * laneWidth + laneWidth/2);
+        }
+        // define jogador no chão
+        normalY = height - 82;
+        player.y = normalY;
+        player.jumpYOffset = 0;
+        player.isJumping = false;
+    }
+    
+    // Atualiza dimensões responsivas do canvas e recalc
+    function resizeCanvas(){
+        const rect = canvas.getBoundingClientRect();
+        // mantemos o canvas lógico fixo 800x500
+        canvas.width = width;
+        canvas.height = height;
+        initLanes();
+        player.x = lanePositions[playerLane] - player.width/2;
+        player.y = normalY - player.jumpYOffset;
+    }
+    
+    // ------ MECÂNICA DE GERAÇÃO -----
+    function spawnCoin(){
+        let lane = Math.floor(Math.random() * lanes);
+        let xPos = lanePositions[lane] - 12; // metade do tamanho da moeda
+        coins.push({
+            x: xPos,
+            y: height - 68,
+            width: 24,
+            height: 24,
+            lane: lane,
+            collected: false
+        });
+    }
+    
+    function spawnTrain(){
+        let lane = Math.floor(Math.random() * lanes);
+        let xPos = lanePositions[lane] - 28;
+        trains.push({
+            x: xPos,
+            y: height - 72,
+            width: 56,
+            height: 58,
+            lane: lane
+        });
+    }
+    
+    // Aumento de dificuldade com pontuação
+    function updateDifficulty(){
+        let newSpeed = baseSpeed + Math.floor(score / 500) * 0.7;
+        if(newSpeed > 14) newSpeed = 14;
+        speed = newSpeed;
+    }
+    
+    // Adicionar partícula
+    function addParticle(x,y, color){
+        particles.push({
+            x: x, y: y, vx: (Math.random() - 0.5)*3, vy: (Math.random() - 0.5)*3 - 2,
+            life: 0.8, size: 4+Math.random()*5, color: color
+        });
+    }
+    
+    // Atualizar lógica do jogo (movimento objetos, colisões, pulo)
+    function updateGame(){
+        if(!gameRunning) return;
+        
+        // Controle de pulo (evita múltiplos pulos)
+        if(jumpRequest &&!player.isJumping &&!jumpCooldown){
+            player.isJumping = true;
+            player.jumpYOffset = 0;
+            jumpCooldown = true;
+            setTimeout(() => { jumpCooldown = false; }, 300);
+            jumpRequest = false;
+        }
+        
+        // Física do pulo
+        if(player.isJumping){
+            let jumpProgress = (player.jumpYOffset / 24); // 24 frames de subida+descida aprox
+            if(player.jumpYOffset < 22){
+                player.jumpYOffset += 2.6;
+                player.y = normalY - player.jumpYOffset;
+            } else {
+                player.isJumping = false;
+                player.jumpYOffset = 0;
+                player.y = normalY;
+            }
+        } else {
+            player.y = normalY;
+        }
+        
+        // Atualiza posição X do jogador baseado nas teclas laterais
+        let newLane = playerLane;
+        if(leftPressed) newLane--;
+        if(rightPressed) newLane++;
+        if(newLane >=0 && newLane < lanes){
+            if(newLane!== playerLane){
+                playerLane = newLane;
+                // efeito de suavidade no movimento
+            }
+        }
+        player.x = lanePositions[playerLane] - player.width/2;
+        
+        // Atualiza Moedas
+        for(let i=0; i<coins.length; i++){
+            let coin = coins[i];
+            coin.x -= speed;
+            // colisão com o jogador (somente se não pulando ou sobreposição normal)
+            let colX = (player.x < coin.x+coin.width && player.x+player.width > coin.x);
+            let colY = (player.y+player.height-8 > coin.y && player.y+12 < coin.y+coin.height);
+            if(colX && colY &&!coin.collected){
+                coin.collected = true;
+                score += 10;
+                scoreSpan.innerText = Math.floor(score);
+                addParticle(coin.x+12, coin.y+12, "#FFD966");
+                updateDifficulty();
+            }
+        }
+        coins = coins.filter(c =>!c.collected && c.x + c.width > 0);
+        
+        // Atualiza Trens (obstáculos)
+        for(let i=0; i<trains.length; i++){
+            let train = trains[i];
+            train.x -= speed;
+            // Colisão mortal se não estiver pulando OU se estiver pulando, só morre se altura não ultrapassar
+            let collideX = (player.x < train.x+train.width && player.x+player.width > train.x);
+            let collideY = (player.y+player.height-12 > train.y && player.y+18 < train.y+train.height);
+            if(collideX && collideY){
+                if(player.isJumping && player.jumpYOffset > 16){
+                    // se pulou alto o suficiente, passa por cima do trem (efeito estilo subway)
+                    // não morre, apenas faz efeito
+                    addParticle(train.x+28, train.y+20, "#FFA07A");
+                    trains.splice(i,1);
+                    i--;
+                    continue;
+                } else {
+                    gameRunning = false;
+                    statusDiv.innerText = "💀 GAME OVER! Pressione CORRER para nova tentativa 💀";
+                    return;
+                }
+            }
+        }
+        trains = trains.filter(t => t.x + t.width > 0);
+        
+        // Spawn baseado em frames
+        spawnCounter++;
+        let coinRate = Math.max(18, 35 - Math.floor(score/300));
+        let trainRate = Math.max(30, 55 - Math.floor(score/200));
+        if(spawnCounter > coinRate){
+            spawnCoin();
+            spawnCounter = 0;
+            // spawn extra de trem às vezes
+            if(Math.random()<0.38 && gameRunning){
+                spawnTrain();
+            }
+        } else if(spawnCounter % 27 === 0 && gameRunning && Math.random()<0.45){
+            if(trains.length < 3) spawnTrain();
+        }
+        
+        // Animação de partículas
+        for(let i=0;i<particles.length;i++){
+            particles[i].x += particles[i].vx;
+            particles[i].y += particles[i].vy;
+            particles[i].life -= 0.025;
+            particles[i].vy += 0.2;
+        }
+        particles = particles.filter(p => p.life > 0 && p.y < height+50);
+        
+        // Aumento passivo a cada 120 frames (sobrevivência)
+        if(frame % 90 === 0 && gameRunning){
+            score += 2;
+            scoreSpan.innerText = Math.floor(score);
+            updateDifficulty();
+        }
+        frame++;
+    }
+    
+    // ---------- DRAW EVERYTHING (Estilo vibrante Subway Surfers) ----------
+    function drawBackground(){
+        // Céu e trilhos
+        const gradSky = ctx.createLinearGradient(0,0,0,height);
+        gradSky.addColorStop(0,"#1c4e70");
+        gradSky.addColorStop(1,"#102b3f");
+        ctx.fillStyle = gradSky;
+        ctx.fillRect(0,0,width,height);
+        // Trilhos metálicos
+        for(let i=0;i<lanes;i++){
+            let railX = lanePositions[i] - laneWidth/2;
+            ctx.fillStyle = "#4a5b6e";
+            ctx.fillRect(railX-8, height-48, laneWidth+16, 12);
+            ctx.fillStyle = "#2d3e4b";
+            ctx.fillRect(railX-4, height-48, laneWidth+8, 6);
+            // Dormentes
+            for(let d=0;d<6;d++){
+                ctx.fillStyle = "#8b5a2b";
+                ctx.fillRect(railX + (d*20) - (frame%40), height-42, 12, 8);
+            }
+        }
+        // fundo cidade
+        ctx.fillStyle = "#021c2c";
+        for(let b=0;b<12;b++){
+            ctx.fillRect(40+b*70, height-130, 30, 90);
+        }
+    }
+    
+    function drawPlayer(){
+        // personagem estiloso com mochila
+        let pX = player.x;
+        let pY = player.y;
+        ctx.shadowBlur = 0;
+        // corpo
+        ctx.fillStyle = "#3c9eff";
+        ctx.beginPath();
+        ctx.roundRect(pX, pY, player.width, player.height, 12);
+        ctx.fill();
+        ctx.fillStyle = "#ffbc3c";
+        ctx.beginPath();
+        ctx.roundRect(pX+8, pY-8, 22, 12, 8);
+        ctx.fill();
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.arc(pX+28, pY+18, 6, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(pX+30, pY+16, 2, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "#ff6e4a";
+        ctx.beginPath();
+        ctx.rect(pX+8, pY+36, 22, 10);
+        ctx.fill();
+        // cabelo
+        ctx.fillStyle = "#d4491c";
+        ctx.beginPath();
+        ctx.rect(pX+12, pY-2, 24, 10);
+        ctx.fill();
+    }
+    
+    function drawCoin(cx, cy){
+        ctx.fillStyle = "#FFD700";
+        ctx.beginPath();
+        ctx.arc(cx+12, cy+12, 12, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "#FFA500";
+        ctx.beginPath();
+        ctx.arc(cx+12, cy+12, 8, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "bold 16px monospace";
+        ctx.fillText("★", cx+6, cy+18);
+    }
+    
+    function drawTrain(t){
+        let tX = t.x;
+        let tY = t.y;
+        ctx.fillStyle = "#4f2d1f";
+        ctx.fillRect(tX, tY, t.width, t.height-6);
+        ctx.fillStyle = "#8b5a2b";
+        ctx.fillRect(tX+5, tY-10, t.width-10, 12);
+        ctx.fillStyle = "#e6b422";
+        ctx.fillRect(tX+10, tY+12, 8, 18);
+        ctx.fillRect(tX+t.width-18, tY+12, 8, 18);
+        ctx.fillStyle = "#363636";
+        ctx.fillRect(tX+20, tY+30, 16, 18);
+    }
+    
+    function drawParticles(){
+        for(let p of particles){
+            ctx.globalAlpha = p.life * 0.8;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.rect(p.x, p.y, p.size*0.7, p.size*0.7);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+    
+    function drawUItext(){
+        ctx.font = "bold 28monospace";
+        ctx.fillStyle = "white";
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = "black";
+        if(!gameRunning){
+            ctx.font = "bold 32px 'Segoe UI'";
+            ctx.fillStyle = "#ffaa66";
+            ctx.fillText("🔥 GAME OVER 🔥", width/2-130, 70);
+        }
+        ctx.shadowBlur = 0;
+    }
+    
+    // Função principal de renderização
+    function render(){
+        drawBackground();
+        for(let t of trains) drawTrain(t);
+        for(let c of coins) drawCoin(c.x, c.y);
+        drawPlayer();
+        drawParticles();
+        drawUItext();
+        // Mostrar efeito de velocidade
+        ctx.font = "bold 14px monospace";
+        ctx.fillStyle = "#cdfffc";
+        ctx.fillText("⚡ SPEED: "+speed.toFixed(1), width-90, 35);
+    }
+    
+    // ----- Game Loop -----
+    function gameLoop(){
+        updateGame();
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+    
+    // ----- Controles por Teclado e Touch -----
+    function handleKeyDown(e){
+        const key = e.key;
+        if(key === 'ArrowLeft'){ leftPressed = true; e.preventDefault();}
+        else if(key === 'ArrowRight'){ rightPressed = true; e.preventDefault();}
+        else if(key === 'ArrowUp' || key === ' '){ 
+            if(gameRunning){
+                jumpRequest = true;
+            }
+            e.preventDefault();
+        }
+    }
+    
+    function handleKeyUp(e){
+        const key = e.key;
+        if(key === 'ArrowLeft') leftPressed = false;
+        if(key === 'ArrowRight') rightPressed = false;
+    }
+    
+    // Touch / Mobile Swipe
+    let touchStartX = 0;
+    function handleTouchStart(e){
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        const canvasW = rect.width;
+        touchStartX = touchX;
+    }
+    
+    function handleTouchMove(e){
+        e.preventDefault();
+        if(!gameRunning) return;
+        const rect = canvas.getBoundingClientRect();
+        let currentX = e.touches[0].clientX - rect.left;
+        let diff = currentX - touchStartX;
+        if(Math.abs(diff) > 25){
+            if(diff > 0 && playerLane < lanes-1){
+                playerLane++;
+                leftPressed=false; rightPressed=false;
+            } else if(diff < 0 && playerLane > 0){
+                playerLane--;
+            }
+            touchStartX = currentX;
+        }
+    }
+    
+    function handleTouchEnd(e){
+        e.preventDefault();
+        if(gameRunning){
+            jumpRequest = true;
+        }
+    }
+    
+    // reset completo do jogo
+    function resetGame(){
+        gameRunning = true;
+        score = 0;
+        frame = 0;
+        speed = baseSpeed;
+        scoreSpan.innerText = "0";
+        coins = [];
+        trains = [];
+        particles = [];
+        playerLane = 1;
+        player.isJumping = false;
+        player.jumpYOffset = 0;
+        player.y = normalY;
+        leftPressed = false;
+        rightPressed = false;
+        jumpRequest = false;
+        jumpCooldown = false;
+        spawnCounter = 0;
+        statusDiv.innerText = "💨 Corra! Desvie dos trens e pegue moedas! 💰";
+        // recalc posição
+        player.x = lanePositions[playerLane] - player.width/2;
+        // spawn inicial amigável
+        for(let i=0;i<2;i++) spawnCoin();
+    }
+    
+    // Eventos e resize
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+    });
+    
+    function bindEvents(){
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        canvas.addEventListener('touchstart', handleTouchStart, {passive: false});
+        canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
+        canvas.addEventListener('touchend', handleTouchEnd);
+        canvas.addEventListener('mousedown', (e) => {
+            if(gameRunning) jumpRequest = true;
+            e.preventDefault();
+        });
+        // swipe mouse simulada arrasto lateral (mouse)
+        let mouseDownX = null;
+        canvas.addEventListener('mousemove', (e) => {
+            if(mouseDownX!== null && gameRunning){
+                let diff = e.clientX - mouseDownX;
+                if(Math.abs(diff) > 25){
+                    if(diff > 0 && playerLane < lanes-1) playerLane++;
+                    else if(diff < 0 && playerLane > 0) playerLane--;
+                    mouseDownX = e.clientX;
+                }
+            }
+        });
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDownX = e.clientX;
+            e.preventDefault();
+        });
+        canvas.addEventListener('mouseup', () => { mouseDownX = null; });
+    }
+    
+    // Inicialização
+    function startGame(){
+        resizeCanvas();
+        bindEvents();
+        resetGame();
+        gameLoop();
+    }
+    
+    restartBtn.addEventListener('click', () => {
+        resetGame();
+    });
+    
+    startGame();
+})();
+
+// helper para roundRect
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.moveTo(x+r, y);
+        this.lineTo(x+w-r, y);
+        this.quadraticCurveTo(x+w, y, x+w, y+r);
+        this.lineTo(x+w, y+h-r);
+        this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+        this.lineTo(x+r, y+h);
+        this.quadraticCurveTo(x, y+h, x, y+h-r);
+        this.lineTo(x, y+r);
+        this.quadraticCurveTo(x, y, x+r, y);
+        return this;
+    };
+              }
