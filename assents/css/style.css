@@ -1,0 +1,128 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background: linear-gradient(145deg, #0a1f3e 0%, #030c1a 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, 'Inter', sans-serif;
+    touch-action: manipulation;
+    padding: 12px;
+}
+
+/* Container do Jogo */
+.game-container {
+    background: #0b2b42;
+    border-radius: 48px;
+    padding: 12px 12px 18px 12px;
+    box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+canvas {
+    display: block;
+    margin: 0 auto;
+    border-radius: 28px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    background-color: #1e2f47;
+    width: 100%;
+    height: auto;
+}
+
+/* Interface de pontuação e controle */
+.game-ui {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    padding: 0 18px;
+}
+
+.score-panel {
+    background: #000000aa;
+    backdrop-filter: blur(6px);
+    border-radius: 60px;
+    padding: 6px 20px;
+    color: gold;
+    font-weight: bold;
+    font-size: 1.7rem;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 3px black;
+    font-family: monospace;
+}
+
+.score-panel span {
+    color: white;
+    font-size: 1rem;
+    margin-right: 8px;
+}
+
+.restart-btn {
+    background: #ff6a3d;
+    border: none;
+    font-size: 1.6rem;
+    font-weight: bold;
+    padding: 6px 22px;
+    border-radius: 50px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 5px 0 #962d0a;
+    transition: 0.07s linear;
+    font-family: inherit;
+}
+
+.restart-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #962d0a;
+}
+
+.controls-info {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 14px;
+    color: #b9e6ff;
+    font-weight: bold;
+    background: #0c1a2be0;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 6px 24px;
+    border-radius: 60px;
+    font-size: 0.85rem;
+    backdrop-filter: blur(4px);
+}
+
+.controls-info span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-msg {
+    text-align: center;
+    margin-top: 12px;
+    font-weight: bold;
+    color: #ffd966;
+    background: #00000099;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 4px 18px;
+    border-radius: 30px;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 600px) {
+  .score-panel { font-size: 1.3rem; padding: 4px 14px; }
+  .restart-btn { font-size: 1.2rem; padding: 4px 18px; }
+  .controls-info { gap: 18px; font-size: 0.7rem; }
+}
