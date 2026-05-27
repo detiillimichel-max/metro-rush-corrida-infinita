@@ -3,7 +3,7 @@
 > Jogo estilo Subway Surfers feito com HTML5 Canvas + JS puro. PWA 100% offline.
 
 ### **🎮 Jogar Agora**
-**https://SEUUSER.github.io/NOME-DO-REPO/**
+**https://detiillimichel-max.github.io/metro-rush-corrida-infinita/**
 
 Adicione à tela inicial no celular pra jogar como app.
 
