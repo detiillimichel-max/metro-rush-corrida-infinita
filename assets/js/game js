@@ -52,7 +52,7 @@
 
     function spawnCoin(){
         let lane = Math.floor(Math.random() * lanes);
-        let xPos = lanePositions - 12;
+        let xPos = lanePositions[lane] - 12; // CORRIGIDO
         coins.push({
             x: xPos,
             y: height - 68,
@@ -65,7 +65,7 @@
 
     function spawnTrain(){
         let lane = Math.floor(Math.random() * lanes);
-        let xPos = lanePositions - 28;
+        let xPos = lanePositions[lane] - 28; // CORRIGIDO
         trains.push({
             x: xPos,
             y: height - 72,
