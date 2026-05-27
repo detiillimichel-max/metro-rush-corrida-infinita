@@ -2,6 +2,7 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const scoreSpan = document.getElementById('scoreValue');
+    const speedSpan = document.getElementById('speedValue');
     const restartBtn = document.getElementById('restartButton');
     const statusDiv = document.getElementById('gameStatus');
 
@@ -52,7 +53,7 @@
 
     function spawnCoin(){
         let lane = Math.floor(Math.random() * lanes);
-        let xPos = lanePositions[lane] - 12; // CORRIGIDO
+        let xPos = lanePositions - 12; // BUG CORRIGIDO AQUI
         coins.push({
             x: xPos,
             y: height - 68,
@@ -65,7 +66,7 @@
 
     function spawnTrain(){
         let lane = Math.floor(Math.random() * lanes);
-        let xPos = lanePositions[lane] - 28; // CORRIGIDO
+        let xPos = lanePositions - 28; // BUG CORRIGIDO AQUI
         trains.push({
             x: xPos,
             y: height - 72,
@@ -79,6 +80,7 @@
         let newSpeed = baseSpeed + Math.floor(score / 500) * 0.7;
         if(newSpeed > 14) newSpeed = 14;
         speed = newSpeed;
+        speedSpan.innerText = speed.toFixed(1);
     }
 
     function addParticle(x,y, color){
@@ -150,7 +152,8 @@
                     continue;
                 } else {
                     gameRunning = false;
-                    statusDiv.innerText = "💀 GAME OVER! Pressione CORRER para nova tentativa 💀";
+                    statusDiv.innerHTML = '<i data-lucide="skull"></i> GAME OVER! Pressione CORRER';
+                    lucide.createIcons();
                     return;
                 }
             }
@@ -221,7 +224,7 @@
         let pX = player.x;
         let pY = player.y;
         ctx.shadowColor = "#00e5ff";
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 20;
         ctx.fillStyle = "#3c9eff";
         ctx.beginPath();
         ctx.roundRect(pX, pY, player.width, player.height, 12);
@@ -251,7 +254,7 @@
 
     function drawCoin(cx, cy){
         ctx.shadowColor = "#FFD700";
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 25;
         ctx.fillStyle = "#FFD700";
         ctx.beginPath();
         ctx.arc(cx+12, cy+12, 12, 0, Math.PI*2);
@@ -280,7 +283,7 @@
         ctx.fillRect(tX+20, tY+30, 16, 18);
         ctx.fillStyle = "#ff0000";
         ctx.shadowColor = "#ff0000";
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 15;
         ctx.fillRect(tX+2, tY+2, 6, 6);
         ctx.shadowBlur = 0;
     }
@@ -290,7 +293,7 @@
             ctx.globalAlpha = p.life * 0.8;
             ctx.fillStyle = p.color;
             ctx.shadowColor = p.color;
-            ctx.shadowBlur = 12;
+            ctx.shadowBlur = 15;
             ctx.beginPath();
             ctx.rect(p.x, p.y, p.size*0.7, p.size*0.7);
             ctx.fill();
@@ -300,14 +303,15 @@
     }
 
     function drawUItext(){
-        ctx.font = "bold 28px monospace";
+        ctx.font = "bold 32px 'Orbitron'";
         ctx.fillStyle = "white";
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = "black";
         if(!gameRunning){
-            ctx.font = "bold 32px 'Segoe UI'";
             ctx.fillStyle = "#ffaa66";
-            ctx.fillText("🔥 GAME OVER 🔥", width/2-130, 70);
+            ctx.shadowColor = "#ff6a3d";
+            ctx.shadowBlur = 20;
+            ctx.fillText("GAME OVER", width/2-110, 70);
         }
         ctx.shadowBlur = 0;
     }
@@ -319,12 +323,6 @@
         drawPlayer();
         drawParticles();
         drawUItext();
-        ctx.font = "bold 14px monospace";
-        ctx.fillStyle = "#cdfffc";
-        ctx.shadowColor = "#00e5ff";
-        ctx.shadowBlur = 8;
-        ctx.fillText("⚡ SPEED: "+speed.toFixed(1), width-90, 35);
-        ctx.shadowBlur = 0;
     }
 
     function gameLoop(){
@@ -389,6 +387,7 @@
         frame = 0;
         speed = baseSpeed;
         scoreSpan.innerText = "0";
+        speedSpan.innerText = speed.toFixed(1);
         coins = [];
         trains = [];
         particles = [];
@@ -401,7 +400,8 @@
         jumpRequest = false;
         jumpCooldown = false;
         spawnCounter = 0;
-        statusDiv.innerText = "💨 Corra! Desvie dos trens e pegue moedas! 💰";
+        statusDiv.innerHTML = '<i data-lucide="hand"></i> Deslize ou use setas | Pegue moedas e evite trens!';
+        lucide.createIcons();
         player.x = lanePositions[playerLane] - player.width/2;
         for(let i=0;i<2;i++) spawnCoin();
     }
